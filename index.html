@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f8f6ea">
+<meta name="description" content="木や野の花を植え、くるりと回して眺める、小さな空の上の箱庭ゲーム。">
+<link rel="icon" href="ui/island.png" type="image/png">
+<link rel="stylesheet" href="style.css">
+<title>こもれびの庭 | KOMOREBI GARDEN</title>
+</head>
+<body>
+<header class="mast"><div class="mast-wrap">
+  <div class="brand"><img class="brand-pic" src="ui/island.png" alt=""><div><h1>こもれびの庭</h1><span class="brand-en" lang="en">KOMOREBI GARDEN</span></div></div>
+  <div class="mast-tools">
+    <span class="save-state" title="庭の保存状態"><img alt="" src="ui/save.png"><span id="save-label">自動保存</span></span>
+    <button class="top-button" id="sound" type="button" aria-label="サウンド切り替え" aria-pressed="false"><img class="sound-off" alt="" src="ui/mute.png"><img class="sound-on" alt="" src="ui/sound.png"><span>サウンド</span></button>
+    <button class="top-button" id="help" type="button" aria-label="遊び方"><img alt="" src="ui/help.png"><span>遊び方</span></button>
+  </div>
+</div></header>
+<main class="layout">
+  <div class="board-column">
+    <section class="garden-frame" aria-label="ひだまり島の箱庭">
+      <div class="view">
+        <canvas id="sky" aria-hidden="true"></canvas>
+        <canvas id="world" tabindex="0" aria-label="箱庭。道具を選んで空き地をタップすると配置できます。"></canvas>
+        <div class="island-tag"><img src="ui/sun.png" alt=""><span>ひだまり島</span></div>
+        <div class="compass" aria-hidden="true"><span id="orientation">北</span><img alt="" src="ui/compass.png"></div>
+        <div id="toast" aria-live="polite" role="status"></div>
+      </div>
+      <div class="board-tools">
+        <span class="selection"><img src="ui/hand.png" alt=""><span id="selection-label">野の花を配置</span></span>
+        <div class="edit-tools">
+          <div class="turn-control"><button type="button" id="rotate-left" class="icon-button" aria-label="視点を左に回す" title="左に回す"><img alt="" src="ui/turn-left.png"></button><button type="button" id="rotate-right" class="icon-button" aria-label="視点を右に回す" title="右に回す"><img alt="" src="ui/turn-right.png"></button></div>
+          <i class="control-divider"></i>
+          <button type="button" id="undo" class="icon-button" aria-label="ひとつ戻す" title="ひとつ戻す"><img alt="" src="ui/undo.png"></button>
+          <button type="button" id="remove" class="icon-button" aria-label="片づける" title="片づける" aria-pressed="false"><img alt="" src="ui/shovel.png"></button>
+        </div>
+      </div>
+    </section>
+    <section class="quest" aria-labelledby="quest-heading">
+      <img class="quest-art" src="ui/letter.png" alt="">
+      <div class="quest-main"><h2 id="quest-heading">庭だより</h2><p id="quest-title">野の花を2つ植えよう</p></div>
+      <div class="quest-meter"><span><span>達成</span><strong id="quest-count">0 / 3</strong></span><div class="meter-bed"><div id="quest-progress" role="progressbar" aria-label="お題全体の進み具合" aria-valuemin="0" aria-valuemax="100"></div></div></div>
+    </section>
+  </div>
+  <aside class="catalog" aria-labelledby="catalog-title"><div class="catalog-top">
+    <img class="catalog-icon" src="ui/toolbox.png" alt=""><h2 id="catalog-title">庭の道具箱</h2>
+  </div>
+    <div id="category-tabs" aria-label="道具の種類"><button type="button" data-cat="all" aria-pressed="true" class="active">すべて</button><button type="button" data-cat="nature" aria-pressed="false">草木</button><button type="button" data-cat="props" aria-pressed="false">家具・建物</button></div>
+    <div id="palette-items" aria-label="配置するもの"></div>
+    <div class="catalog-foot"><img src="ui/sprout.png" alt="">道具を選んで、空き地をタップ</div>
+  </aside>
+</main>
+<dialog id="help-dialog" aria-labelledby="help-title"><div class="help-head"><img src="ui/island.png" alt=""><div><small>KOMOREBI GARDEN</small><h2 id="help-title">庭のつくり方</h2></div></div>
+  <dl><dt>植える・置く</dt><dd>道具箱から好きなものを選び、島の空いている草地をタップします。</dd>
+  <dt>島を回す</dt><dd>島の上を左右にドラッグするか、回転ボタンを押します。木の裏側や家の窓も眺められます。</dd>
+  <dt>やり直す</dt><dd>戻すボタンでひとつ前の状態に戻せます。スコップで草木や家具を片づけられます。最初からある赤屋根の家は島の目印です。</dd>
+  <dt>庭だより</dt><dd>3つの小さなお題が届きます。達成したあとも、そのまま庭づくりを楽しめます。庭はこのブラウザに自動保存されます。</dd><dt>キーボードで遊ぶ</dt><dd>島を選択した状態で、矢印キーで区画を選び、Enterで配置します。QとEで島を回せます。</dd></dl>
+  <button type="button" id="close-help">庭にもどる</button>
+</dialog>
+<script src="models.js"></script><script src="scene.js"></script><script src="sky.js"></script><script src="game.js"></script>
+</body></html>
