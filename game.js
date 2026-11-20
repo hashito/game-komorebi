@@ -7,8 +7,17 @@
     { type: "flower", name: "野の花", category: "nature" },
     { type: "bench", name: "ベンチ", category: "props" },
     { type: "lamp", name: "庭灯", category: "props" },
-    { type: "house", name: "赤屋根の家", category: "props" }
+    { type: "house", name: "赤屋根の家", category: "props" },
+    // Gifts: each one arrives with a 庭だより letter (unlock = letters finished).
+    { type: "bush", name: "茂み", category: "nature", unlock: 1 },
+    { type: "mushroom", name: "きのこ", category: "nature", unlock: 2 },
+    { type: "rock", name: "苔むした岩", category: "nature", unlock: 3 },
+    { type: "fence", name: "木の柵", category: "props", unlock: 4 },
+    { type: "crate", name: "木箱", category: "props", unlock: 5 },
+    { type: "sign", name: "立て札", category: "props", unlock: 6 }
   ];
+  const unlockAt = Object.fromEntries(ITEMS.map(item => [item.type, item.unlock || 0]));
+  const PLANTS = ["oak", "pine", "flower", "bush", "mushroom"];
   const names = Object.fromEntries(ITEMS.map(item => [item.type, item.name]));
   const DEFAULT_ANGLE = -0.55;
   const TAU = Math.PI * 2;
@@ -22,12 +31,32 @@
     id: index === 0 ? HOUSE_ID : "original-" + index, type, x, y, turn: 0
   }));
   const originalById = new Map(startObjects.map(obj => [obj.id, obj]));
-  const directions = ["北", "北東", "東", "南東", "南", "南西", "西", "北西"];
   const byId = id => document.getElementById(id);
   const cellKey = (x, y) => x + ":" + y;
   const normalizeAngle = angle => ((angle % TAU) + TAU) % TAU;
   const isPlanted = obj => obj.id.startsWith("planted-");
   const isTree = obj => obj.type === "oak" || obj.type === "pine";
+  const beside = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
+  const besidePath = obj => (obj.x === 1 || obj.x === 3) && obj.y >= 3;
+  const nearPond = (x, y) => [[4, 4], [4, 5], [5, 4], [5, 5]].some(([px, py]) => Math.abs(px - x) + Math.abs(py - y) === 1);
+  function placedBeside(list, type, neighborTest) {
+    return list.some(obj => isPlanted(obj) && obj.type === type &&
+      list.some(neighbor => neighbor !== obj && neighborTest(neighbor) && beside(obj, neighbor)));
+  }
+  const plantedCount = list => list.filter(isPlanted).length;
+  const flowerCount = list => list.filter(obj => isPlanted(obj) && obj.type === "flower").length;
+  // 庭だより: one letter at a time. `type` is the tool the letter asks for (its cells glow on the island),
+  // `gift` the tool that arrives when it is done, `visit` what the player sees change in the garden.
+  const QUESTS = [
+    { title: "野の花を2つ植えよう", type: "flower", test: list => flowerCount(list) >= 2, gift: "bush" },
+    { title: "木のとなりにベンチを置こう", type: "bench", test: list => placedBeside(list, "bench", isTree), gift: "mushroom" },
+    { title: "ベンチのとなりに庭灯を置こう", type: "lamp", test: list => placedBeside(list, "lamp", n => n.type === "bench"), gift: "rock", visit: "青い小鳥がベンチに遊びにきました" },
+    { title: "木の根もとに、きのこを置こう", type: "mushroom", test: list => placedBeside(list, "mushroom", isTree), gift: "fence" },
+    { title: "木の柵を2つ、となりあわせに置こう", type: "fence", test: list => placedBeside(list, "fence", n => n.type === "fence"), gift: "crate" },
+    { title: "家のとなりに木箱を置こう", type: "crate", test: list => placedBeside(list, "crate", n => n.type === "house"), gift: "sign" },
+    { title: "小道のそばに立て札を立てよう", type: "sign", test: list => list.some(obj => isPlanted(obj) && obj.type === "sign" && besidePath(obj)), visit: "小道に立て札が立ちました。庭だよりは、あと1通です" },
+    { title: "植えたもの・置いたものを15こにしよう", type: null, test: list => plantedCount(list) >= 15, gift: "dusk", visit: "島に夕暮れがきました" }
+  ];
 
   function run() {
     const canvas = byId("world");
@@ -53,9 +82,12 @@
     let lastFrame = -Infinity;
     let renderId = 0;
     let rotation = null;
+    let dusk = false;
+    let seen = new Set(ITEMS.filter(item => !item.unlock).map(item => item.type));
+    let hadSave = false;
 
     function validSnapshot(data) {
-      if (!data || !Number.isInteger(data.completed) || data.completed < 0 || data.completed > 3 ||
+      if (!data || !Number.isInteger(data.completed) || data.completed < 0 || data.completed > QUESTS.length ||
           !Array.isArray(data.objects) || data.objects.length > 49) return false;
       const occupied = new Set();
       const ids = new Set();
@@ -92,6 +124,10 @@
         if (data.version !== 1 || !validSnapshot(data)) return;
         objects = data.objects;
         completed = data.completed;
+        hadSave = true;
+        dusk = completed >= QUESTS.length && data.dusk === true;
+        if (Array.isArray(data.seen)) for (const type of data.seen) if (Object.hasOwn(names, type)) seen.add(type);
+        if (Object.hasOwn(names, data.selected) && unlocked(data.selected)) selected = data.selected;
         if (Number.isFinite(data.angle)) angle = normalizeAngle(data.angle);
         if (Array.isArray(data.history)) history = data.history.slice(-25).filter(validSnapshot);
       } catch {
@@ -101,7 +137,7 @@
 
     function save() {
       try {
-        localStorage.setItem(STORE_KEY, JSON.stringify({ version: 1, objects, completed, history, angle: rotation?.end ?? angle }));
+        localStorage.setItem(STORE_KEY, JSON.stringify({ version: 1, objects, completed, history, angle: rotation?.end ?? angle, dusk, seen: [...seen], selected }));
         saveAvailable = true;
       } catch {
         saveAvailable = false;
@@ -159,47 +195,87 @@
       updateControls();
     }
 
-    const flowers = () => objects.filter(obj => isPlanted(obj) && obj.type === "flower").length;
-    const beside = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
-    function placedBeside(type, neighborTest) {
-      return objects.some(obj => isPlanted(obj) && obj.type === type &&
-        objects.some(neighbor => neighborTest(neighbor) && beside(obj, neighbor)));
-    }
-    const goals = [
-      () => flowers() >= 2,
-      () => placedBeside("bench", isTree),
-      () => placedBeside("lamp", neighbor => neighbor.type === "bench")
-    ];
+    const unlocked = type => completed >= (unlockAt[type] || 0);
+    const quest = () => QUESTS[completed] || null;
+    const track = (name, params) => { try { if (typeof window.gtag === "function") window.gtag("event", name, params); } catch {} };
 
     function updateGoals() {
       const before = completed;
-      while (completed < goals.length && goals[completed]()) completed++;
+      while (completed < QUESTS.length && QUESTS[completed].test(objects)) completed++;
       if (completed === before) return false;
-      if (completed === 3) {
-        notify("3つのお題を達成！　青い小鳥が遊びにきました", 5200);
+      const done = QUESTS[completed - 1];
+      track("quest_complete", { quest: completed });
+      const gift = done.gift && done.gift !== "dusk" ? "道具箱に「" + names[done.gift] + "」が届きました" : "";
+      if (completed === QUESTS.length) {
+        dusk = true;
+        notify("庭だよりをぜんぶ達成！　" + done.visit, 5200);
         chime([523.25, 659.25, 783.99, 1046.5], 0.44);
+        track("garden_complete", {});
+        setTimeout(showComplete, 900);
       } else {
-        notify(completed === 1 ? "お題達成！　次は木のとなりにベンチを置こう" : "お題達成！　次はベンチのとなりに庭灯を置こう", 3700);
+        notify("お題達成！　" + [done.visit, gift].filter(Boolean).join("。"), 4200);
         chime([523.25, 659.25, 783.99], 0.35);
       }
+      if (done.gift && names[done.gift]) buildPalette();
       return true;
     }
 
+    // Cells where the current letter's tool would finish the letter (they glow on the island).
+    function hintCells() {
+      const q = quest();
+      if (!q || !q.type || removing || selected !== q.type) return [];
+      const cells = [];
+      for (let y = 0; y <= 6; y++) for (let x = 0; x <= 6; x++) {
+        if (!canPlace(q.type, x, y)) continue;
+        const trial = objects.concat({ id: "planted-" + cellKey(x, y), type: q.type, x, y, turn: 0 });
+        if (q.test(trial)) cells.push({ x, y });
+      }
+      // Letters that need more than one placement (2 flowers, 2 fences): every free cell is a step forward.
+      return cells.length ? cells : freeCells().map(cell => ({ ...cell, soft: true }));
+    }
+    function freeCells() {
+      if (removing) return [];
+      const cells = [];
+      for (let y = 0; y <= 6; y++) for (let x = 0; x <= 6; x++) if (canPlace(selected, x, y)) cells.push({ x, y });
+      return cells;
+    }
+
     function updateQuestUI() {
-      const titles = ["野の花を2つ植えよう", "木のとなりにベンチを置こう", "ベンチのとなりに庭灯を置こう", "青い小鳥が遊びにきました"];
+      const q = quest();
       const count = byId("quest-count");
       const title = byId("quest-title");
       const progress = byId("quest-progress");
-      if (title) title.textContent = completed === 0 && flowers() === 1 ? "野の花をあと1つ植えよう" : titles[completed];
-      if (count) count.textContent = completed + " / 3";
+      const pick = byId("quest-pick");
+      const note = byId("quest-note");
+      let text = q ? q.title : "庭だよりをぜんぶ達成しました";
+      if (q && q.type === "flower" && flowerCount(objects) === 1) text = "野の花をあと1つ植えよう";
+      if (q && !q.type) text = q.title + "（いま" + plantedCount(objects) + "こ）";
+      if (title) title.textContent = text;
+      if (count) count.textContent = completed + " / " + QUESTS.length;
+      if (note) {
+        note.textContent = !q ? "夕暮れボタンで、灯りのともる庭を眺められます" :
+          q.type ? (selected === q.type && !removing ? "島の上の金色の場所に置くと達成です" : "「" + names[q.type] + "」をえらぶと、置く場所が光ります") :
+          "どこに何を置いても数に入ります";
+      }
+      if (pick) {
+        const show = Boolean(q && q.type && (selected !== q.type || removing));
+        pick.hidden = !show;
+        if (show) pick.textContent = names[q.type] + "をえらぶ";
+      }
       if (progress) {
-        const partial = completed === 0 ? Math.min(flowers(), 2) / 2 : 0;
-        const value = Math.round((completed + partial) / goals.length * 100);
+        let partial = 0;
+        if (q && q.type === "flower") partial = Math.min(flowerCount(objects), 2) / 2;
+        if (q && !q.type) partial = Math.min(plantedCount(objects), 15) / 15;
+        const value = Math.round((completed + partial) / QUESTS.length * 100);
         progress.style.width = value + "%";
         progress.setAttribute("aria-valuenow", String(value));
       }
-      const dots = byId("quest-dots");
-      if (dots) Array.from(dots.children).forEach((dot, i) => dot.classList.toggle("done", i < completed));
+      const duskButton = byId("dusk");
+      if (duskButton) {
+        duskButton.hidden = completed < QUESTS.length;
+        setPressed(duskButton, dusk);
+      }
+      canvas.closest(".view")?.classList.toggle("dusk", dusk);
     }
 
     function setPressed(button, on) {
@@ -233,10 +309,15 @@
       palette.replaceChildren();
       for (const item of ITEMS) {
         if (category !== "all" && category !== item.category) continue;
+        const open = unlocked(item.type);
         const button = document.createElement("button");
         button.type = "button";
-        button.className = "item-card";
-        button.dataset.type = item.type;
+        button.className = "item-card" + (open ? "" : " locked") + (open && !seen.has(item.type) ? " new" : "");
+        if (open) button.dataset.type = item.type;
+        else {
+          button.disabled = true;
+          button.setAttribute("aria-label", "まだ届いていない道具（庭だより" + item.unlock + "通目のごほうび）");
+        }
         const icon = document.createElement("canvas");
         icon.className = "item-art";
         icon.setAttribute("aria-hidden", "true");
@@ -245,7 +326,7 @@
         scene.icon(icon, item.type);
         const label = document.createElement("span");
         label.className = "item-name";
-        label.textContent = item.name;
+        label.textContent = open ? item.name : "お題" + item.unlock + "で届く";
         button.append(icon, label);
         palette.append(button);
       }
@@ -260,8 +341,12 @@
     function undo() {
       const previous = history.pop();
       if (!previous) return;
+      const hadGifts = completed;
       objects = previous.objects;
       completed = previous.completed;
+      if (completed < QUESTS.length) dusk = false;
+      if (!unlocked(selected)) selected = "flower";
+      if (completed !== hadGifts) buildPalette();
       updateControls();
       save();
       notify("ひとつ前の庭に戻しました");
@@ -269,14 +354,28 @@
       requestDraw();
     }
 
+    // A fence runs east-west; it turns to join a fence already standing north or south of it.
+    function fenceTurn(type, tile) {
+      if (type !== "fence") return 0;
+      const fenceAt = (x, y) => objectAt({ x, y })?.type === "fence";
+      const ns = fenceAt(tile.x, tile.y - 1) || fenceAt(tile.x, tile.y + 1);
+      const ew = fenceAt(tile.x - 1, tile.y) || fenceAt(tile.x + 1, tile.y);
+      return ns && !ew ? Math.PI / 2 : 0;
+    }
+
     function objectAt(tile) {
       return tile && objects.find(obj => obj.x === tile.x && obj.y === tile.y);
+    }
+
+    // A house is wide: next to the pond its walls would stand in the water and on the jetty.
+    function canPlace(type, x, y) {
+      return !objectAt({ x, y }) && scene.canPlant(x, y) && !(type === "house" && nearPond(x, y));
     }
 
     function canUse(tile) {
       if (!tile) return false;
       const object = objectAt(tile);
-      return removing ? Boolean(object && object.id !== HOUSE_ID) : !object && scene.canPlant(tile.x, tile.y);
+      return removing ? Boolean(object && object.id !== HOUSE_ID) : canPlace(selected, tile.x, tile.y);
     }
 
     function useTile(tile) {
@@ -288,7 +387,9 @@
       if (!canUse(tile)) {
         notify(removing ?
           (object?.id === HOUSE_ID ? "最初からある赤屋根の家は、この庭の目印です" : "ここには片づけるものがありません") :
-          (object ? "ここには" + names[object.type] + "があります" : "小道と池はそのままに。空いている草地を選んでください"));
+          (object ? "ここには" + names[object.type] + "があります" :
+            selected === "house" && scene.canPlant(tile.x, tile.y) ? "家は池から1マスはなして建てましょう" :
+            "小道と池はそのままに。空いている草地を選んでください"));
         return;
       }
       remember();
@@ -297,10 +398,10 @@
         notify(names[object.type] + "を片づけました");
         chime([392]);
       } else {
-        objects = objects.concat({ id: "planted-" + cellKey(tile.x, tile.y), type: selected, x: tile.x, y: tile.y, turn: 0 });
+        objects = objects.concat({ id: "planted-" + cellKey(tile.x, tile.y), type: selected, x: tile.x, y: tile.y, turn: fenceTurn(selected, tile) });
         if (!updateGoals()) {
-          const partial = selected === "flower" && completed === 0 ? "（" + Math.min(2, flowers()) + " / 2）" : "";
-          notify(names[selected] + (["oak", "pine", "flower"].includes(selected) ? "を植えました" : "を置きました") + partial);
+          const partial = selected === "flower" && completed === 0 ? "（" + Math.min(2, flowerCount(objects)) + " / 2）" : "";
+          notify(names[selected] + (PLANTS.includes(selected) ? "を植えました" : "を置きました") + partial);
           chime([659.25, 880], 0.21);
         }
       }
@@ -318,11 +419,8 @@
     }
 
     function updateDirection() {
-      const label = byId("orientation");
-      if (label) {
-        const index = Math.round(normalizeAngle(angle - DEFAULT_ANGLE) / (Math.PI / 4)) % directions.length;
-        label.textContent = directions[index];
-      }
+      const needle = byId("compass-needle");
+      if (needle) needle.style.transform = "rotate(" + Math.round((angle - DEFAULT_ANGLE) * 180 / Math.PI) + "deg)";
     }
 
     function rotate(sign) {
@@ -352,7 +450,8 @@
       }
       scene.render({
         objects, angle, completed, time: now, mode: removing ? "remove" : "plant",
-        highlight: point ? { x: point.x, y: point.y, valid: canUse(point), type: selected } : null
+        highlight: point ? { x: point.x, y: point.y, valid: canUse(point), type: selected, turn: fenceTurn(selected, point) } : null,
+        hints: hintCells(), dots: freeCells(), dusk
       });
     }
 
@@ -467,6 +566,11 @@
       if (!button || !palette.contains(button)) return;
       selected = button.dataset.type;
       removing = false;
+      if (!seen.has(selected)) {
+        seen.add(selected);
+        button.classList.remove("new");
+        save();
+      }
       updateControls();
       requestDraw();
     });
@@ -490,15 +594,45 @@
       requestDraw();
     });
     byId("sound")?.addEventListener("click", toggleSound);
-    byId("help")?.addEventListener("click", () => {
-      if (helpDialog && !helpDialog.open) helpDialog.showModal();
+    byId("quest-pick")?.addEventListener("click", () => {
+      const q = quest();
+      if (!q || !q.type || !unlocked(q.type)) return;
+      selected = q.type;
+      removing = false;
+      seen.add(selected);
+      if (category !== "all" && ITEMS.find(item => item.type === selected)?.category !== category) category = "all";
+      buildPalette();
+      save();
+      notify("光っている場所をタップすると" + names[selected] + (PLANTS.includes(selected) ? "を植えます" : "を置きます"));
+      requestDraw();
     });
-    byId("close-help")?.addEventListener("click", () => helpDialog?.close());
-    helpDialog?.addEventListener("click", event => {
-      if (event.target !== helpDialog) return;
-      const r = helpDialog.getBoundingClientRect();
-      if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) helpDialog.close();
+    byId("dusk")?.addEventListener("click", () => {
+      if (completed < QUESTS.length) return;
+      dusk = !dusk;
+      updateControls();
+      save();
+      chime(dusk ? [392, 523.25] : [523.25, 659.25]);
+      requestDraw();
     });
+    const openDialog = dialog => { if (dialog && !dialog.open) dialog.showModal(); };
+    byId("help")?.addEventListener("click", () => openDialog(helpDialog));
+    for (const dialog of document.querySelectorAll("dialog")) {
+      dialog.addEventListener("click", event => {
+        const closer = event.target.closest("[data-close]");
+        if (closer) { dialog.close(); return; }
+        if (event.target !== dialog) return;
+        const r = dialog.getBoundingClientRect();
+        if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dialog.close();
+      });
+    }
+    function showComplete() {
+      const dialog = byId("complete-dialog");
+      if (!dialog || dialog.open) return;
+      for (const open of document.querySelectorAll("dialog[open]")) open.close();
+      dialog.showModal();
+    }
+    // Read-only view for the headless checks (tools/play/*.mjs).
+    window.__komorebi = { state: () => ({ angle: rotation?.end ?? angle, completed, quests: QUESTS.length, selected, removing, dusk, hints: hintCells(), free: freeCells(), objects: objects.map(o => ({ ...o })) }) };
     document.addEventListener("visibilitychange", () => {
       if (document.hidden && renderId) {
         cancelAnimationFrame(renderId);
@@ -510,6 +644,13 @@
     buildPalette();
     updateDirection();
     requestDraw();
+    // The title card: what this is, what to do, and share / other games (fleet rule). It waits for the player.
+    const welcome = byId("welcome-dialog");
+    if (welcome) {
+      const start = byId("welcome-start");
+      if (start && hadSave) start.textContent = "庭のつづきへ";
+      openDialog(welcome);
+    }
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run, { once: true });

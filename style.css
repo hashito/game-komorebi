@@ -73,3 +73,57 @@ dialog dt{margin:10px 0 3px;font-size:14px;font-weight:800}dialog dd{margin:0;co
 @media(max-width:350px){.selection img{display:none}.icon-button{width:29px}.quest-meter{width:49px}.quest-art{width:25px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}}
 .game-download{display:block;color:#536b48;font-size:13px;text-align:center;margin:6px 0 12px;text-underline-offset:.22em}#world.dragging{cursor:grabbing}
+
+/* ---- fleet additions (β, title/ending share row, letters, dusk, phone-readable text) ---- */
+:root{--gf-surface:#faf9ed;--gf-text:#334536;--gf-border:#b8bfaa;--gf-radius:7px;--gf-text-dim:#68745f;--gf-accent:#c2773a}
+.beta{display:inline-block;vertical-align:.32em;margin-left:.5em;padding:2px 7px 3px;border:1px solid #c79a4f;border-radius:5px;background:#fff3d6;color:#8a5a1e;font-size:12px;letter-spacing:.06em;line-height:1.2;font-weight:800}
+.compass .rose{display:grid;justify-items:center;gap:2px;transition:transform .22s ease-out}
+.compass{opacity:.9;font-size:12px}
+.compass img{width:17px;height:17px}
+.icon-button.text-button{width:auto;gap:5px;padding:6px 10px;font-size:13px;font-weight:800;color:#5b4a2a}
+.icon-button.text-button[aria-pressed="true"]{background:#3f4770;border-color:#2e3456;color:#fff3cf}
+.icon-button[hidden]{display:none}
+.quest-main small{display:block;margin-top:2px;font-size:13px;color:#7a6f4e;font-weight:600;line-height:1.5}
+.quest-pick{margin-top:7px;border:1px solid #9b7a3c;border-bottom-width:2px;border-radius:6px;background:#fff4d2;color:#6b4d16;font-size:14px;font-weight:800;padding:6px 12px;min-height:36px}
+.quest-pick:hover{background:#ffeab0}
+.quest-pick[hidden]{display:none}
+.item-card:disabled{cursor:default;background:#efeee2;border-style:dashed}
+.item-card.locked .item-art{filter:brightness(0) opacity(.22)}
+.item-card.locked .item-name{color:#8b8f7c;font-size:12px}
+.item-card.new::before{content:"NEW";position:absolute;left:5px;top:5px;padding:1px 5px;border-radius:4px;background:#d9773f;color:#fff;font:800 10px/1.4 system-ui,sans-serif;letter-spacing:.05em}
+#palette-items{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;min-height:0}
+.item-card{min-height:92px;padding:4px 2px 6px}
+.item-art{height:56px}
+.item-name{font-size:13px}
+.view{height:clamp(300px,min(35.5vw,calc(100vh - 340px)),480px)}
+.view.dusk #sky{filter:brightness(.66) saturate(1.25) hue-rotate(-150deg)}
+.view.dusk .island-tag{background:#fff3dcee}
+.site-foot{max-width:1312px;margin:0 auto;padding:0 clamp(20px,4.25vw,64px) 28px;text-align:center;color:#6b765d;font-size:13px}
+.site-foot p{margin-top:8px}
+.lead{margin:14px 0 10px;font-size:15px;line-height:1.75;font-weight:600;color:#3f4d3c}
+.sub{margin:0 0 14px;font-size:14px;line-height:1.7;color:#566452;font-weight:500}
+.steps{margin:0 0 16px;padding:0;list-style:none;display:grid;gap:7px;counter-reset:s}
+.steps li{counter-increment:s;display:grid;grid-template-columns:26px 1fr;column-gap:8px;font-size:14px;line-height:1.55;color:#566452;font-weight:500}
+.steps li::before{content:counter(s);grid-row:span 2;width:24px;height:24px;border-radius:50%;background:#52724b;color:#fffef0;display:grid;place-items:center;font-weight:800;font-size:13px}
+.steps b{color:var(--ink);font-weight:800}
+dialog .primary{border:1px solid #385439;border-radius:6px;background:#52724b;color:#fffef0;padding:11px 15px;width:100%;font-size:15px;font-weight:800;margin-top:6px}
+dialog .primary:hover{background:#466641}
+.dialog-share .gf-sharebar{margin-top:12px}
+dialog{overflow:auto}
+@media(max-width:940px){.item-card{min-height:88px}}
+/* A12: phone-readable text (short side < 500 px): body >= 17 px, small >= 14 px */
+@media(max-width:740px){
+  .selection{font-size:14px}.item-name{font-size:14px}.item-card.locked .item-name{font-size:14px}
+  .quest h2{font-size:14px}.quest p{font-size:17px}.quest-main small{font-size:14px}.quest-meter>span{font-size:14px}.quest-meter strong{font-size:14px}.quest-meter{width:66px}
+  .island-tag{font-size:14px}.compass{font-size:14px}.catalog-foot{font-size:14px}#category-tabs button{font-size:14px;min-height:36px}
+  .brand-en{font-size:10px}.beta{font-size:12px}h1{font-size:22px}
+  #toast{font-size:15px}
+  dialog{padding:18px 18px;width:calc(100% - 24px)}dialog dt{font-size:17px}dialog dd{font-size:17px}.lead{font-size:17px}.sub{font-size:16px}.steps li{font-size:16px}.help-head h2{font-size:22px}
+  .site-foot{font-size:14px}
+  .view{height:clamp(270px,72vw,380px)}
+  .icon-button.text-button{padding:6px 7px;font-size:14px}.icon-button.text-button img{display:none}
+}
+@media(max-width:740px){
+  .quest-art{display:none}.quest{padding:10px 12px}.quest p{line-height:1.45}
+  #toast{bottom:6px;font-size:14px;padding:6px 10px;max-width:calc(100% - 12px)}
+}

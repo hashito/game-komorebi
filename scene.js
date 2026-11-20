@@ -453,7 +453,59 @@
       stamp(ctx,cached(scenery.bird,a+turn+facing),x,y-height-lift);
     }
 
-    render({objects=[],angle=-.55,time=0,highlight=null,mode='plant',completed=0}={}) {
+    // Free cells get a tiny seed mark; cells that would finish the current letter pulse in gold.
+    marks(ctx,a,t,dots,hints) {
+      for(const d of dots) {
+        const p=project((d.x-3)*PITCH,(d.y-3)*PITCH,a);
+        ctx.fillStyle='rgba(255,252,214,.55)';ctx.fillRect(Math.round(p.x),Math.round(p.y),1,1);
+      }
+      const pulse=.5+.5*Math.sin(t*.005);
+      for(const h of hints) {
+        const wx=(h.x-3)*PITCH, wy=(h.y-3)*PITCH;
+        const r=h.soft?7:8+Math.round(pulse*2);
+        const corners=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>project(wx+x*r,wy+y*r,a));
+        ctx.fillStyle='rgba(255,226,120,'+(h.soft?.10+pulse*.08:.20+pulse*.18).toFixed(3)+')';
+        ctx.beginPath();corners.forEach((p,i)=>i?ctx.lineTo(Math.round(p.x),Math.round(p.y)):ctx.moveTo(Math.round(p.x),Math.round(p.y)));
+        ctx.closePath();ctx.fill();
+        if(h.soft) continue;
+        for(let i=0;i<4;i++) {
+          const o=corners[i],n=corners[(i+1)%4],len=Math.max(Math.abs(n.x-o.x),Math.abs(n.y-o.y),1);
+          for(let k=0;k<=len;k+=2) nearest(o.x+(n.x-o.x)*k/len,o.y+(n.y-o.y)*k/len,'#ffe58a',ctx);
+        }
+        const c=project(wx,wy,a);
+        ctx.fillStyle='#fff4c2';ctx.fillRect(Math.round(c.x),Math.round(c.y)-3-Math.round(pulse*2),1,2);
+      }
+    }
+
+    // Dusk: the whole scene dims to evening, then lamp heads, house windows and fireflies glow.
+    dusk(ctx,visible,a,t) {
+      const w=this.canvas.width,h=this.canvas.height;
+      ctx.save();ctx.setTransform(1,0,0,1,0,0);
+      ctx.globalCompositeOperation='multiply';
+      const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#7d7fb6');g.addColorStop(1,'#c99a8c');
+      ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+      ctx.globalCompositeOperation='lighter';
+      ctx.translate(this.cx,this.cy);
+      const glow=(x,y,r,rgb,alpha)=>{
+        for(let k=r;k>0;k-=2) ellipse(ctx,x,y,k,Math.max(1,Math.round(k*.62)),'rgba('+rgb+','+(alpha*(1-k/(r+1))*.55).toFixed(3)+')');
+      };
+      for(const o of visible) {
+        if(o.ghost) continue;
+        if(o.kind==='lamp') {glow(o.x,o.y-18,14,'255,196,110',.55);glow(o.x,o.y,10,'255,186,100',.22);}
+        if(o.kind==='house') {glow(o.x,o.y-9,16,'255,178,96',.28);}
+      }
+      for(let i=0;i<9;i++) {
+        const k=t*.0004+i*1.7;
+        const blink=Math.sin(t*.003+i*2.3);
+        if(blink<.1) continue;
+        const p=project(Math.sin(k*1.3+i)*70,Math.cos(k+i*.8)*68,a);
+        ctx.fillStyle='rgba(235,255,160,'+(.45+blink*.5).toFixed(2)+')';
+        ctx.fillRect(Math.round(p.x),Math.round(p.y-6-4*Math.sin(k*3)),1,1);
+      }
+      ctx.restore();
+    }
+
+    render({objects=[],angle=-.55,time=0,highlight=null,mode='plant',completed=0,hints=[],dots=[],dusk=false}={}) {
       this.setSize();
       const a=turnAngle(angle),ctx=this.ctx;
       ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
@@ -479,25 +531,26 @@
         visible.push({model,kind:o.type,turn:o.turn||0,...p,wx,wy,id:o.id});
       }
       for(const o of visible) {
-        const rx=({house:20,oak:13,pine:10,flower:6,bench:11,lamp:4,bush:7,stones:5,reeds:3})[o.kind];
+        const rx=({house:20,oak:13,pine:10,flower:6,bench:11,lamp:4,bush:7,stones:5,reeds:3,mushroom:6,rock:8,crate:6,sign:4,fence:9})[o.kind];
         if(rx) ellipse(ctx,o.x+3,o.y+1,rx,Math.max(2,Math.round(rx*.34)),'rgba(52,76,53,.16)');
       }
+      if(mode==='plant') this.marks(ctx,a,time,dots,hints);
       if(highlight) {
         this.selection(ctx,highlight,a);
         if(mode==='plant' && highlight.valid && highlight.type) {
           const model=modelFor(highlight.type);
           const p=project((highlight.x-3)*PITCH,(highlight.y-3)*PITCH,a);
-          if(model) visible.push({model,kind:highlight.type,turn:0,...p,ghost:true});
+          if(model) visible.push({model,kind:highlight.type,turn:highlight.turn||0,...p,ghost:true});
         }
       }
-      const bench=completed===3 ? [...visible].reverse().find(o=>o.kind==='bench'&&!o.ghost) : null;
+      const bench=completed>=3 ? [...visible].reverse().find(o=>o.kind==='bench'&&!o.ghost) : null;
       visible.sort((l,r)=>l.y-r.y || l.x-r.x);
       for(const o of visible) {
         if(o.ghost) ctx.globalAlpha=.48;
         stamp(ctx,cached(o.model,a+o.turn),o.x,o.y);
         ctx.globalAlpha=1;
         if(o.kind==='house' && !o.ghost) this.smoke(ctx,o,a,time);
-        if(completed===3 && (o===bench || (!bench && o.kind==='dock'))) this.bluebird(ctx,a,time,bench);
+        if(completed>=3 && (o===bench || (!bench && o.kind==='dock'))) this.bluebird(ctx,a,time,bench);
 
       }
       // Two tiny butterflies drift among the meadow planting.
@@ -509,6 +562,7 @@
         ctx.fillStyle=i?'#e4ab72':'#fff2ad';ctx.fillRect(x-spread,y-1,spread,2);ctx.fillRect(x+1,y,spread,1);
         ctx.fillStyle='#9a8b64';ctx.fillRect(x,y,1,2);
       }
+      if(dusk) this.dusk(ctx,visible,a,time);
       ctx.setTransform(1,0,0,1,0,0);
     }
   }

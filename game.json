@@ -1,0 +1,25 @@
+{
+  "id": "komorebi",
+  "title": "こもれびの庭",
+  "titleEn": "KOMOREBI GARDEN",
+  "subtitle": "空に浮かぶ小さな島に木や花を植えて、くるりと回して眺める箱庭ゲーム",
+  "version": "1.0.0",
+  "status": "beta",
+  "kind": "cozy garden sandbox (2D canvas sprite stacking, no game-kit 3D shell)",
+  "style": "pixel",
+  "entry": { "html": "index.html", "scripts": ["models.js", "scene.js", "sky.js", "game.js", "share-bar.js"] },
+  "save": { "key": "komorebi-garden.v1", "where": "localStorage" },
+  "quests": 8,
+  "releaseNotes": [
+    { "version": "1.0.0", "date": "2026-11-21", "items": [
+      { "type": "add", "text": "庭だよりを3通から8通に。お題を達成するたびに新しい道具（茂み・きのこ・苔むした岩・木の柵・木箱・立て札）が届きます" },
+      { "type": "add", "text": "お題の道具をえらぶと、達成できる場所が島の上で金色に光ります。空いている草地には小さな印が出ます" },
+      { "type": "add", "text": "最後のお題で島に夕暮れがきて、庭灯と窓に灯りがともります。夕暮れボタンで昼と切りかえられます" },
+      { "type": "add", "text": "はじめの画面と完成の画面に、共有ボタンと「他のゲームを遊ぶ」を置きました" },
+      { "type": "fix", "text": "方位磁針が島といっしょに回り、北の向きがわかるようにしました" },
+      { "type": "fix", "text": "ベンチの両端に鉄の脚と肘かけを付け、横から見てもベンチに見えるようにしました" },
+      { "type": "fix", "text": "家を池のすぐとなりに建てると壁が池と桟橋にかかっていたので、1マスはなして建てるようにしました" },
+      { "type": "fix", "text": "スマホで字が小さかったところを大きくしました" }
+    ] }
+  ]
+}

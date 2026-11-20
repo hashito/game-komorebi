@@ -218,6 +218,16 @@
       for(const x of [-8,8]) box(x-1,-4,4,x,-3,11,iron[0]);
       for(const y of [-3,0,3]) box(-11,y-1,5,11,y,6,timber);
       box(-11,-4,8,11,-3,9,timber);box(-11,-4,11,11,-3,12,timber);
+      // Cast-iron ends with an armrest: seen along its length the bench still
+      // shows the classic park-bench profile instead of a thin plank.
+      for(const x of [-12,12]) {
+        box(x,3,0,x,4,5,iron[1]);          // front leg
+        box(x,-5,0,x,-4,12,iron[0]);       // back leg rising into the backrest
+        box(x,-4,5,x,3,5,iron[2]);         // seat rail
+        box(x,2,6,x,3,8,iron[1]);          // arm post
+        box(x,-4,9,x,4,9,iron[3]);         // armrest
+        box(x,-5,13,x,-4,13,iron[2]);      // cap
+      }
     });
   }
   function lantern() {
