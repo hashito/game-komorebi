@@ -464,14 +464,14 @@
         const wx=(h.x-3)*PITCH, wy=(h.y-3)*PITCH;
         const r=h.soft?7:8+Math.round(pulse*2);
         const corners=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>project(wx+x*r,wy+y*r,a));
-        ctx.fillStyle='rgba(255,226,120,'+(h.soft?.10+pulse*.08:.20+pulse*.18).toFixed(3)+')';
+        ctx.fillStyle='rgba(255,226,120,'+(h.soft?.17+pulse*.10:.22+pulse*.18).toFixed(3)+')';
         ctx.beginPath();corners.forEach((p,i)=>i?ctx.lineTo(Math.round(p.x),Math.round(p.y)):ctx.moveTo(Math.round(p.x),Math.round(p.y)));
         ctx.closePath();ctx.fill();
-        if(h.soft) continue;
         for(let i=0;i<4;i++) {
           const o=corners[i],n=corners[(i+1)%4],len=Math.max(Math.abs(n.x-o.x),Math.abs(n.y-o.y),1);
-          for(let k=0;k<=len;k+=2) nearest(o.x+(n.x-o.x)*k/len,o.y+(n.y-o.y)*k/len,'#ffe58a',ctx);
+          for(let k=0;k<=len;k+=h.soft?4:2) nearest(o.x+(n.x-o.x)*k/len,o.y+(n.y-o.y)*k/len,h.soft?'rgba(255,240,170,.7)':'#ffe58a',ctx);
         }
+        if(h.soft) continue;
         const c=project(wx,wy,a);
         ctx.fillStyle='#fff4c2';ctx.fillRect(Math.round(c.x),Math.round(c.y)-3-Math.round(pulse*2),1,2);
       }
